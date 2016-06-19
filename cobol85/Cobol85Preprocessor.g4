@@ -50,9 +50,57 @@ startRule : (
 // exec cics statement
 
 execCicsStatement :
-	EXEC CICS charData END_EXEC DOT?
+	EXEC CICS cicsStatements END_EXEC DOT?
 ;
 
+cicsStatements :
+    (NEWLINE? cicsStatement NEWLINE?)+
+    | charData*
+;
+
+cicsStatement :
+     cicsLinkStatement
+
+;
+
+cicsName :
+    cobolWord | STRINGLITERAL
+;
+
+cicsDataArea :
+    cobolWord
+;
+
+cicsDataValue :
+    cobolWord
+    | NONNUMERICLITERAL
+    | INTEGERLITERAL
+    | LENGTH OF cobolWord
+;
+
+cicsSystemName :
+    SYSTEMLITERAL
+;
+
+cicsLinkStatement :
+    LINK
+    PROGRAM LPARENCHAR cicsName RPARENCHAR
+    (
+        COMAREA LPARENCHAR cicsDataArea RPARENCHAR
+        (LENGTH LPARENCHAR cicsDataValue RPARENCHAR)?
+        (DATALENGTH LPARENCHAR cicsDataValue RPARENCHAR)?
+        | CHANNEL LPARENCHAR cicsName RPARENCHAR
+    )?
+    (
+        INPUTMSG LPARENCHAR cicsDataArea RPARENCHAR
+        (INPUTMSGLEN LPARENCHAR cicsDataValue RPARENCHAR)?
+        |(
+            SYSID LPARENCHAR cicsSystemName RPARENCHAR
+            | SYNCONRETURN
+            | TRANSID LPARENCHAR cicsName RPARENCHAR
+        )*
+    )?
+;
 
 // exec sql statement
 
@@ -125,6 +173,8 @@ cobolWord : IDENTIFIER;
 
 literal : NONNUMERICLITERAL;
 
+stringLiteral : STRINGLITERAL ;
+
 pseudoText : DOUBLEEQUALCHAR charData? DOUBLEEQUALCHAR;
 
 charData : 
@@ -159,48 +209,74 @@ charDataKeyword :
 
 // keywords
 BY : B Y;
+CHANNEL: C H A N N E L;
 CICS : C I C S;
+COMAREA: C O M A R E A;
 COPY : C O P Y;
+DATALENGTH: D A T A L E N G T H;
 EJECT : E J E C T;
-END_EXEC : E N D '-' E X E C; 
+END_EXEC : E N D '-' E X E C;
 EXEC : E X E C;
 IN : I N;
-OF : O F;
+INPUTMSG: I N P U T M S G;
+INPUTMSGLEN: I N P U T M S G L E N;
+LENGTH: L E N G T H;
+LINK: L I N K;
 OFF : O F F;
+OF : O F;
 ON : O N;
+PROGRAM: P R O G R A M;
 REPLACE : R E P L A C E;
 REPLACING : R E P L A C I N G;
-SQL : S Q L;
 SKIP1 : S K I P '1';
 SKIP2 : S K I P '2';
 SKIP3 : S K I P '3';
+SQL : S Q L;
 SUPPRESS : S U P P R E S S;
+SYNCONRETURN: S Y N C O N R E T U R N;
+SYSID: S Y S I D;
+TRANSID: T R A N S I D;
 
 
 // symbols
+COMMACHAR: '.';
 COMMENTTAG : '>*';
 DOT : '.';
 DOUBLEEQUALCHAR : '==';
+LPARENCHAR : '(';
+MINUSCHAR : '-';
+PLUSCHAR : '+';
+RPARENCHAR : ')';
 
 
 // literals
 NONNUMERICLITERAL : STRINGLITERAL | HEXNUMBER;
+NUMERICLITERAL : (PLUSCHAR | MINUSCHAR)? [0-9]* (DOT | COMMACHAR) [0-9]+ (('e' | 'E') (PLUSCHAR | MINUSCHAR)? [0-9]+)?;
+INTEGERLITERAL : (PLUSCHAR | MINUSCHAR)? [0-9]+;
 
-fragment HEXNUMBER : 
+SYSTEMLITERAL:
+    SYSTEMCHAR
+    | SYSTEMCHAR SYSTEMCHAR
+    | SYSTEMCHAR SYSTEMCHAR SYSTEMCHAR
+    | SYSTEMCHAR SYSTEMCHAR SYSTEMCHAR SYSTEMCHAR
+;
+
+fragment HEXNUMBER :
 	X '"' [0-9A-F]+ '"' 
 	| X '\'' [0-9A-F]+ '\''
 ;
 
-fragment STRINGLITERAL : 
+STRINGLITERAL :
 	'"' (~["\n\r] | '""' | '\'')* '"' 
 	| '\'' (~['\n\r] | '\'\'' | '"')* '\''
 ;
 
 IDENTIFIER : [a-zA-Z0-9]+ ([-_]+ [a-zA-Z0-9]+)*;
 
+SYSTEMCHAR: [A-Z0-9#$@];
 
 // whitespace, line breaks, comments, ...
-NEWLINE : '\r'? '\n';
+NEWLINE : '\r'? '\n' -> skip;
 COMMENTLINE : COMMENTTAG ~('\n' | '\r')* -> channel(HIDDEN);
 WS : [ \t\f;]+ -> channel(HIDDEN);
 TEXT : ~('\n' | '\r');
